@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastros IPTU Careiro</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: #f4f7fa;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        header {
+            background-color: #003087;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 500;
+        }
+
+        .floating-menu {
+            position: relative;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        .menu-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .menu-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 40px;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        .menu-content.active {
+            display: block;
+        }
+
+        .menu-content a, .menu-content button {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            color: #333;
+            text-decoration: none;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .menu-content a:hover, .menu-content button:hover {
+            background-color: #f0f0f0;
+        }
+
+        .menu-content svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 0.5rem;
+            fill: #333;
+        }
+
+        .success-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #28a745;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            display: none;
+            z-index: 1000;
+            font-size: 0.9rem;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            flex-grow: 1;
+        }
+
+        .container h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #003087;
+        }
+
+        .search-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+
+        .search-bar input {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            max-width: 400px;
+        }
+
+        .table-container {
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background-color: #003087;
+            color: white;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #003087;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #00205b;
+        }
+
+        .btn-save {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background-color: #218838;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        .btn-back {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-back:hover {
+            background-color: #5a6268;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 2rem;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            background-color: #003087;
+            color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
+
+        .modal-header h3 {
+            font-size: 1.3rem;
+            font-weight: 500;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-section {
+            margin-bottom: 2rem;
+        }
+
+        .form-section h4 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: #003087;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 0.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input, .form-group select {
+            padding: 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .form-group input[readonly] {
+            background-color: #e9ecef;
+        }
+
+        .form-group .error {
+            color: #dc3545;
+            font-size: 0.8rem;
+            min-height: 1rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            background-color: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        footer {
+            position: sticky;
+            bottom: 0;
+            background-color: #fff;
+            padding: 1rem 2rem;
+            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .search-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-bar input {
+                max-width: 100%;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            .modal.active {
+                padding: 1rem;
+            }
+            
+            .modal-content {
+                max-height: 95vh;
+            }
+            
+            .modal-footer {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .modal-footer .button-group {
+                justify-content: stretch;
+            }
+            
+            .modal-footer .button-group button {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Cadastros IPTU Careiro</h1>
+        <div class="floating-menu">
+            <button class="menu-btn" onclick="toggleMenu()">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="6" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="12" cy="18" r="2" />
+                </svg>
+            </button>
+            <div class="menu-content" id="menuContent">
+                <a href="index.html" class="btn btn-senha">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/>
+                    </svg>
+                    Novo Cadastro
+                </a>
+                <button class="btn btn-logoff" onclick="fazerLogoff()">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                    </svg>
+                    Sair
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="success-message" id="successMessage">
+        Operação realizada com sucesso!
+    </div>
+
+    <div class="container">
+        <h2>Cadastros de IPTU</h2>
+        
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Buscar por nome, CPF/CNPJ ou endereço...">
+            <button class="btn btn-primary" onclick="filtrarCadastros()">Buscar</button>
+        </div>
+        
+        <div class="table-container">
+            <table id="cadastrosTable">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>CPF/CNPJ</th>
+                        <th>Valor IPTU</th>
+                    </tr>
+                </thead>
+                <tbody id="cadastrosBody">
+                    <!-- Os dados serão preenchidos via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div class="modal" id="editarCadastroModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Cadastro</h3>
+                <button class="close-modal" onclick="fecharModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-section">
+                    <h4>Dados do Contribuinte</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="editNomeCompleto">Nome Completo:</label>
+                            <input type="text" id="editNomeCompleto" class="uppercase" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editCpfCnpj">CPF ou CNPJ:</label>
+                            <input type="text" id="editCpfCnpj" maxlength="18" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editRg">RG:</label>
+                            <input type="text" id="editRg" maxlength="13">
+                        </div>
+                        <div class="form-group">
+                            <label for="editDataNascimento">Data de Nascimento:</label>
+                            <input type="text" id="editDataNascimento" placeholder="DD/MM/AAAA" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editRuaCorrespondencia">Rua (Correspondência):</label>
+                            <input type="text" id="editRuaCorrespondencia" class="uppercase">
+                        </div>
+                        <div class="form-group">
+                            <label for="editNumeroCorrespondencia">Número:</label>
+                            <input type="text" id="editNumeroCorrespondencia" class="uppercase">
+                        </div>
+                        <div class="form-group">
+                            <label for="editBairroCorrespondencia">Bairro:</label>
+                            <input type="text" id="editBairroCorrespondencia" class="uppercase">
+                        </div>
+                        <div class="form-group">
+                            <label for="editTelefone">Telefone:</label>
+                            <input type="tel" id="editTelefone" maxlength="15" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editEmail">E-mail de Contato:</label>
+                            <input type="email" id="editEmail" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h4>Informações do Imóvel</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="editRuaImovel">Rua:</label>
+                            <input type="text" id="editRuaImovel" class="uppercase" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editNumeroImovel">Número:</label>
+                            <input type="text" id="editNumeroImovel" class="uppercase" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editBairroImovel">Bairro:</label>
+                            <input type="text" id="editBairroImovel" class="uppercase" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editCepImovel">CEP:</label>
+                            <input type="text" id="editCepImovel" placeholder="00000-000" maxlength="9" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editMatriculaImovel">Matrícula do Imóvel:</label>
+                            <input type="text" id="editMatriculaImovel" class="uppercase" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editTipoImovel">Tipo de Imóvel:</label>
+                            <select id="editTipoImovel" required>
+                                <option value="">Selecione...</option>
+                                <option value="Residencial">Residencial</option>
+                                <option value="Comercial">Comercial</option>
+                                <option value="Terreno">Terreno</option>
+                                <option value="Misto">Misto</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editAreaTerreno">Área do Terreno (m²):</label>
+                            <input type="number" id="editAreaTerreno" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editAreaConstruida">Área Construída (m²):</label>
+                            <input type="number" id="editAreaConstruida" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editNumeroPavimentos">Número de Pavimentos:</label>
+                            <input type="number" id="editNumeroPavimentos" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editIdadeConstrucao">Idade da Construção (anos):</label>
+                            <input type="number" id="editIdadeConstrucao" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editMaterialConstrucao">Material de Construção:</label>
+                            <select id="editMaterialConstrucao" required>
+                                <option value="">Selecione...</option>
+                                <option value="Alvenaria">Alvenaria</option>
+                                <option value="Madeira">Madeira</option>
+                                <option value="Concreto">Concreto</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editCondicaoImovel">Condição do Imóvel:</label>
+                            <select id="editCondicaoImovel" required>
+                                <option value="">Selecione...</option>
+                                <option value="Ocupado">Ocupado</option>
+                                <option value="Desocupado">Desocupado</option>
+                                <option value="Em Construção">Em Construção</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editBenfeitorias">Benfeitorias:</label>
+                            <input type="text" id="editBenfeitorias" class="uppercase">
+                        </div>
+                        <div class="form-group">
+                            <label for="editZoneamento">Zoneamento:</label>
+                            <input type="text" id="editZoneamento" class="uppercase" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h4>Cálculo do IPTU</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="editAreaTerrenoCalc">Área do Terreno (m²):</label>
+                            <input type="number" id="editAreaTerrenoCalc" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editValorMqTerreno">Valor m² Terreno (R$):</label>
+                            <input type="number" id="editValorMqTerreno" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editValorTerreno">Valor do Terreno (VT):</label>
+                            <input type="text" id="editValorTerreno" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="editAreaConstruidaCalc">Área Construída (m²):</label>
+                            <input type="number" id="editAreaConstruidaCalc" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editValorMqConstrucao">Valor m² Construção (R$):</label>
+                            <input type="number" id="editValorMqConstrucao" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editFatorIdade">Fator Idade:</label>
+                            <input type="number" id="editFatorIdade" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editFatorPadrao">Fator Padrão:</label>
+                            <input type="number" id="editFatorPadrao" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editValorConstrucao">Valor da Construção (VC):</label>
+                            <input type="text" id="editValorConstrucao" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="editValorVenal">Valor Venal (VV):</label>
+                            <input type="text" id="editValorVenal" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="editAliquota">Alíquota (%):</label>
+                            <input type="number" id="editAliquota" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editIptu">IPTU (R$):</label>
+                            <input type="text" id="editIptu" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="button-group">
+                    <button type="button" class="btn btn-back" onclick="fecharModal()">Voltar</button>
+                </div>
+                <div class="button-group">
+                    <button type="button" class="btn btn-delete" onclick="eliminarCadastro()">Eliminar</button>
+                    <button type="button" class="btn btn-save" onclick="salvarEdicao()">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <button type="button" class="btn btn-primary" onclick="window.location.href='index.html'">Novo Cadastro</button>
+    </footer>
+
+    <script>
+        // Inicializar Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVW8YN4jRdRv5uYyPxWV_cZ8oS0a2I7hk",
+            authDomain: "iptucareiro.firebaseapp.com",
+            projectId: "iptucareiro",
+            storageBucket: "iptucareiro.firebasestorage.app",
+            messagingSenderId: "247099053843",
+            appId: "1:247099053843:web:08717a5344fe36f00dece6"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'login.html';
+            } else {
+                carregarCadastros();
+            }
+        });
+
+        function fazerLogoff() {
+            firebase.auth().signOut().then(() => {
+                window.location.href = 'login.html';
+            }).catch((error) => {
+                console.error('Erro ao fazer logoff:', error);
+                alert('Erro ao fazer logoff. Verifique o console para mais detalhes.');
+            });
+        }
+
+        function toggleMenu() {
+            const menuContent = document.getElementById('menuContent');
+            menuContent.classList.toggle('active');
+        }
+
+        document.addEventListener('click', function(event) {
+            const menuContent = document.getElementById('menuContent');
+            const menuBtn = document.querySelector('.menu-btn');
+            if (!menuBtn.contains(event.target) && !menuContent.contains(event.target)) {
+                menuContent.classList.remove('active');
+            }
+        });
+
+        let cadastros = [];
+        let cadastroAtualId = null;
+
+        function carregarCadastros() {
+            db.collection('IPTU').get().then((querySnapshot) => {
+                cadastros = [];
+                querySnapshot.forEach((doc) => {
+                    cadastros.push({ id: doc.id, ...doc.data() });
+                });
+                exibirCadastros(cadastros);
+            }).catch((error) => {
+                console.error('Erro ao carregar cadastros:', error);
+                alert('Erro ao carregar cadastros. Verifique o console para mais detalhes.');
+            });
+        }
+
+        function exibirCadastros(listaCadastros) {
+            const tbody = document.getElementById('cadastrosBody');
+            tbody.innerHTML = '';
+            
+            if (listaCadastros.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Nenhum cadastro encontrado</td></tr>';
+                return;
+            }
+            
+            listaCadastros.forEach(cadastro => {
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-id', cadastro.id);
+                tr.innerHTML = `
+                    <td>${cadastro.nomeCompleto || ''}</td>
+                    <td>${cadastro.cpfCnpj || ''}</td>
+                    <td>${cadastro.iptu || 'R$ 0,00'}</td>
+                `;
+                
+                // Adicionar evento de clique na linha
+                tr.addEventListener('click', () => {
+                    editarCadastro(cadastro.id);
+                });
+                
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filtrarCadastros() {
+            const termo = document.getElementById('searchInput').value.toLowerCase();
+            if (!termo) {
+                exibirCadastros(cadastros);
+                return;
+            }
+            
+            const cadastrosFiltrados = cadastros.filter(cadastro => 
+                (cadastro.nomeCompleto && cadastro.nomeCompleto.toLowerCase().includes(termo)) ||
+                (cadastro.cpfCnpj && cadastro.cpfCnpj.includes(termo)) ||
+                (cadastro.ruaImovel && cadastro.ruaImovel.toLowerCase().includes(termo)) ||
+                (cadastro.bairroImovel && cadastro.bairroImovel.toLowerCase().includes(termo))
+            );
+            
+            exibirCadastros(cadastrosFiltrados);
+        }
+
+        function editarCadastro(id) {
+            const cadastro = cadastros.find(c => c.id === id);
+            if (!cadastro) return;
+            
+            cadastroAtualId = id;
+            
+            // Preencher dados do contribuinte
+            document.getElementById('editNomeCompleto').value = cadastro.nomeCompleto || '';
+            document.getElementById('editCpfCnpj').value = cadastro.cpfCnpj || '';
+            document.getElementById('editRg').value = cadastro.rg || '';
+            document.getElementById('editDataNascimento').value = cadastro.dataNascimento || '';
+            document.getElementById('editRuaCorrespondencia').value = cadastro.ruaCorrespondencia || '';
+            document.getElementById('editNumeroCorrespondencia').value = cadastro.numeroCorrespondencia || '';
+            document.getElementById('editBairroCorrespondencia').value = cadastro.bairroCorrespondencia || '';
+            document.getElementById('editTelefone').value = cadastro.telefone || '';
+            document.getElementById('editEmail').value = cadastro.email || '';
+            
+            // Preencher dados do imóvel
+            document.getElementById('editRuaImovel').value = cadastro.ruaImovel || '';
+            document.getElementById('editNumeroImovel').value = cadastro.numeroImovel || '';
+            document.getElementById('editBairroImovel').value = cadastro.bairroImovel || '';
+            document.getElementById('editCepImovel').value = cadastro.cepImovel || '';
+            document.getElementById('editMatriculaImovel').value = cadastro.matriculaImovel || '';
+            document.getElementById('editTipoImovel').value = cadastro.tipoImovel || '';
+            document.getElementById('editAreaTerreno').value = cadastro.areaTerrenoCadastro || '';
+            document.getElementById('editAreaConstruida').value = cadastro.areaConstruidaCadastro || '';
+            document.getElementById('editNumeroPavimentos').value = cadastro.numeroPavimentos || '';
+            document.getElementById('editIdadeConstrucao').value = cadastro.idadeConstrucao || '';
+            document.getElementById('editMaterialConstrucao').value = cadastro.materialConstrucao || '';
+            document.getElementById('editCondicaoImovel').value = cadastro.condicaoImovel || '';
+            document.getElementById('editBenfeitorias').value = cadastro.benfeitorias || '';
+            document.getElementById('editZoneamento').value = cadastro.zoneamento || '';
+            
+            // Preencher dados do cálculo IPTU
+            document.getElementById('editAreaTerrenoCalc').value = cadastro.areaTerreno || '';
+            document.getElementById('editValorMqTerreno').value = cadastro.valorMqTerreno || '';
+            document.getElementById('editValorTerreno').value = cadastro.valorTerreno || '';
+            document.getElementById('editAreaConstruidaCalc').value = cadastro.areaConstruida || '';
+            document.getElementById('editValorMqConstrucao').value = cadastro.valorMqConstrucao || '';
+            document.getElementById('editFatorIdade').value = cadastro.fatorIdade || '';
+            document.getElementById('editFatorPadrao').value = cadastro.fatorPadrao || '';
+            document.getElementById('editValorConstrucao').value = cadastro.valorConstrucao || '';
+            document.getElementById('editValorVenal').value = cadastro.valorVenal || '';
+            document.getElementById('editAliquota').value = cadastro.aliquota || '';
+            document.getElementById('editIptu').value = cadastro.iptu || '';
+            
+            // Mostrar modal
+            document.getElementById('editarCadastroModal').classList.add('active');
+            
+            // Adicionar eventos para calcular IPTU automaticamente
+            document.querySelectorAll('#editarCadastroModal input:not([readonly])').forEach(input => {
+                input.addEventListener('input', calcularIPTUEdicao);
+            });
+        }
+
+        function calcularIPTUEdicao() {
+            const areaTerreno = parseFloat(document.getElementById('editAreaTerrenoCalc').value) || 0;
+            const valorMqTerreno = parseFloat(document.getElementById('editValorMqTerreno').value) || 0;
+            const areaConstruida = parseFloat(document.getElementById('editAreaConstruidaCalc').value) || 0;
+            const valorMqConstrucao = parseFloat(document.getElementById('editValorMqConstrucao').value) || 0;
+            const fatorIdade = parseFloat(document.getElementById('editFatorIdade').value) || 1;
+            const fatorPadrao = parseFloat(document.getElementById('editFatorPadrao').value) || 1;
+            const aliquota = parseFloat(document.getElementById('editAliquota').value) || 0;
+
+            const vt = areaTerreno * valorMqTerreno;
+            document.getElementById('editValorTerreno').value = formatarReais(vt);
+
+            const vc = areaConstruida * valorMqConstrucao * fatorIdade * fatorPadrao;
+            document.getElementById('editValorConstrucao').value = formatarReais(vc);
+
+            const vv = vt + vc;
+            document.getElementById('editValorVenal').value = formatarReais(vv);
+
+            const iptuValor = (vv * aliquota) / 100;
+            document.getElementById('editIptu').value = formatarReais(iptuValor);
+        }
+
+        function formatarReais(valor) {
+            return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function fecharModal() {
+            document.getElementById('editarCadastroModal').classList.remove('active');
+            cadastroAtualId = null;
+        }
+
+        function salvarEdicao() {
+            if (!cadastroAtualId) return;
+            
+            const contribuinte = {
+                nomeCompleto: document.getElementById('editNomeCompleto').value,
+                cpfCnpj: document.getElementById('editCpfCnpj').value,
+                rg: document.getElementById('editRg').value,
+                dataNascimento: document.getElementById('editDataNascimento').value,
+                ruaCorrespondencia: document.getElementById('editRuaCorrespondencia').value,
+                numeroCorrespondencia: document.getElementById('editNumeroCorrespondencia').value,
+                bairroCorrespondencia: document.getElementById('editBairroCorrespondencia').value,
+                telefone: document.getElementById('editTelefone').value,
+                email: document.getElementById('editEmail').value
+            };
+
+            const imovel = {
+                ruaImovel: document.getElementById('editRuaImovel').value,
+                numeroImovel: document.getElementById('editNumeroImovel').value,
+                bairroImovel: document.getElementById('editBairroImovel').value,
+                cepImovel: document.getElementById('editCepImovel').value,
+                matriculaImovel: document.getElementById('editMatriculaImovel').value,
+                tipoImovel: document.getElementById('editTipoImovel').value,
+                areaTerrenoCadastro: document.getElementById('editAreaTerreno').value,
+                areaConstruidaCadastro: document.getElementById('editAreaConstruida').value,
+                numeroPavimentos: document.getElementById('editNumeroPavimentos').value,
+                idadeConstrucao: document.getElementById('editIdadeConstrucao').value,
+                materialConstrucao: document.getElementById('editMaterialConstrucao').value,
+                condicaoImovel: document.getElementById('editCondicaoImovel').value,
+                benfeitorias: document.getElementById('editBenfeitorias').value,
+                zoneamento: document.getElementById('editZoneamento').value
+            };
+
+            const fichaIPTU = {
+                areaTerreno: document.getElementById('editAreaTerrenoCalc').value,
+                valorMqTerreno: document.getElementById('editValorMqTerreno').value,
+                valorTerreno: document.getElementById('editValorTerreno').value,
+                areaConstruida: document.getElementById('editAreaConstruidaCalc').value,
+                valorMqConstrucao: document.getElementById('editValorMqConstrucao').value,
+                fatorIdade: document.getElementById('editFatorIdade').value,
+                fatorPadrao: document.getElementById('editFatorPadrao').value,
+                valorConstrucao: document.getElementById('editValorConstrucao').value,
+                valorVenal: document.getElementById('editValorVenal').value,
+                aliquota: document.getElementById('editAliquota').value,
+                iptu: document.getElementById('editIptu').value
+            };
+
+            const fichaAtualizada = {
+                ...contribuinte,
+                ...imovel,
+                ...fichaIPTU,
+                dataAtualizacao: new Date().toLocaleString('pt-BR')
+            };
+
+            db.collection('IPTU').doc(cadastroAtualId).update(fichaAtualizada)
+                .then(() => {
+                    mostrarMensagemSucesso('Cadastro atualizado com sucesso!');
+                    carregarCadastros();
+                    fecharModal();
+                })
+                .catch((error) => {
+                    console.error('Erro ao atualizar cadastro:', error);
+                    alert('Erro ao atualizar cadastro. Verifique o console para mais detalhes.');
+                });
+        }
+
+        function eliminarCadastro() {
+            if (!cadastroAtualId || !confirm('Tem certeza que deseja eliminar este cadastro? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+            
+            db.collection('IPTU').doc(cadastroAtualId).delete()
+                .then(() => {
+                    mostrarMensagemSucesso('Cadastro eliminado com sucesso!');
+                    carregarCadastros();
+                    fecharModal();
+                })
+                .catch((error) => {
+                    console.error('Erro ao eliminar cadastro:', error);
+                    alert('Erro ao eliminar cadastro. Verifique o console para mais detalhes.');
+                });
+        }
+
+        function mostrarMensagemSucesso(mensagem) {
+            const successMessage = document.getElementById('successMessage');
+            successMessage.textContent = mensagem;
+            successMessage.classList.add('show');
+            
+            setTimeout(() => {
+                successMessage.classList.remove('show');
+            }, 3000);
+        }
+
+        // Adicionar evento de busca ao pressionar Enter
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                filtrarCadastros();
+            }
+        });
+
+        // Adicionar evento para campos uppercase
+        document.querySelectorAll('.uppercase').forEach(input => {
+            input.addEventListener('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+        });
+
+        // Fechar modal ao clicar fora dele
+        document.getElementById('editarCadastroModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                fecharModal();
+            }
+        });
+    </script>
+</body>
+</html>

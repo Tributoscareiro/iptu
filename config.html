@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redefinir Senha - IPTU Careiro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f4f8;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h1 {
+            color: #1a3c34;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #4b5563;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .error {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .btn-cancel {
+            background-color: #6b7280;
+            color: white;
+        }
+        .btn-cancel:hover {
+            background-color: #4b5563;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Redefinir Senha</h1>
+        <p>Insira seu e-mail para receber um link de redefinição de senha.</p>
+        <form id="redefinirSenhaForm">
+            <div class="form-group">
+                <label for="email">E-mail:</label>
+                <input type="email" id="email" readonly>
+                <div id="emailError" class="error"></div>
+            </div>
+            <div class="button-group">
+                <button type="button" class="btn btn-primary" onclick="enviarRedefinicao()">Enviar Link</button>
+                <button type="button" class="btn btn-cancel" onclick="voltar()">Cancelar</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVW8YN4jRdRv5uYyPxWV_cZ8oS0a2I7hk",
+            authDomain: "iptucareiro.firebaseapp.com",
+            projectId: "iptucareiro",
+            storageBucket: "iptucareiro.firebasestorage.app",
+            messagingSenderId: "247099053843",
+            appId: "1:247099053843:web:08717a5344fe36f00dece6"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Verificar autenticação do usuário
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'login.html';
+            } else {
+                document.getElementById('email').value = user.email || '';
+            }
+        });
+
+        function enviarRedefinicao() {
+            const email = document.getElementById('email').value;
+            const emailError = document.getElementById('emailError');
+            emailError.textContent = '';
+
+            if (!email) {
+                emailError.textContent = 'E-mail não disponível.';
+                return;
+            }
+
+            auth.sendPasswordResetEmail(email)
+                .then(() => {
+                    alert('Um link de redefinição de senha foi enviado para o seu e-mail.');
+                })
+                .catch((error) => {
+                    console.error('Erro ao enviar link de redefinição:', error);
+                    if (error.code === 'auth/user-not-found') {
+                        emailError.textContent = 'E-mail não encontrado.';
+                    } else if (error.code === 'auth/invalid-email') {
+                        emailError.textContent = 'E-mail inválido.';
+                    } else {
+                        emailError.textContent = 'Erro ao enviar link. Verifique o console.';
+                    }
+                });
+        }
+
+        function voltar() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

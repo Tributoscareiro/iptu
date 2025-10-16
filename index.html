@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTU Careiro</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: #f4f7fa;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        header {
+            background-color: #003087;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 500;
+        }
+
+        .floating-menu {
+            position: relative;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        .menu-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .menu-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 40px;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        .menu-content.active {
+            display: block;
+        }
+
+        .menu-content a, .menu-content button {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            color: #333;
+            text-decoration: none;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .menu-content a:hover, .menu-content button:hover {
+            background-color: #f0f0f0;
+        }
+
+        .menu-content svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 0.5rem;
+            fill: #333;
+        }
+
+        .success-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #28a745;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            display: none;
+            z-index: 1000;
+            font-size: 0.9rem;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .progress-bar {
+            display: flex;
+            justify-content: center;
+            background-color: #e9ecef;
+            padding: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .progress-step {
+            flex: 1;
+            text-align: center;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #6c757d;
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-right: none;
+            cursor: default;
+        }
+
+        .progress-step:last-child {
+            border-right: 1px solid #dee2e6;
+        }
+
+        .progress-step.active {
+            background-color: #003087;
+            color: white;
+            border-color: #003087;
+        }
+
+        .container {
+            display: none;
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            flex-grow: 1;
+        }
+
+        .container.active {
+            display: block;
+        }
+
+        .container h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #003087;
+        }
+
+        form {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input, .form-group select {
+            padding: 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .form-group input[readonly] {
+            background-color: #e9ecef;
+        }
+
+        .form-group .error {
+            color: #dc3545;
+            font-size: 0.8rem;
+            min-height: 1rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #003087;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #00205b;
+        }
+
+        .btn-back {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-back:hover {
+            background-color: #5a6268;
+        }
+
+        .btn-save {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background-color: #218838;
+        }
+
+        .btn-save.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 1rem;
+            color: #28a745;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        footer {
+            position: sticky;
+            bottom: 0;
+            background-color: #fff;
+            padding: 1rem 2rem;
+            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        footer.justify-space-between {
+            justify-content: space-between;
+        }
+
+        @media (min-width: 1200px) {
+            .container {
+                padding: 1rem 4rem;
+            }
+
+            form {
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 1rem;
+            }
+
+            .form-group {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>IPTU Careiro</h1>
+        <div class="floating-menu">
+            <button class="menu-btn" onclick="toggleMenu()">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="6" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="12" cy="18" r="2" />
+                </svg>
+            </button>
+            <div class="menu-content" id="menuContent">
+                <a href="config.html" class="btn btn-senha">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/>
+                    </svg>
+                    Configurações
+                </a>
+                <a href="cadastros.html" class="btn btn-cadastro">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                    Ir para Cadastro
+                </a>
+                <button class="btn btn-logoff" onclick="fazerLogoff()">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                    </svg>
+                    Sair
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="success-message" id="successMessage">
+        Cadastro salvo com sucesso!
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-step active" id="stepContribuinte">Dados do Contribuinte</div>
+        <div class="progress-step" id="stepImovel">Informações do Imóvel</div>
+        <div class="progress-step" id="stepIPTU">Cálculo do IPTU</div>
+    </div>
+
+    <div id="cadastroPessoal" class="container active">
+        <h2>Dados do Contribuinte</h2>
+        <form id="cadastroPessoalForm">
+            <div class="form-group">
+                <label for="nomeCompleto">Nome Completo:</label>
+                <input type="text" id="nomeCompleto" placeholder="Nome Completo" class="uppercase" required>
+                <div id="nomeCompletoError" class="error"></div>
+            </div>
+            <div class="form-group">
+                <label for="cpfCnpj">CPF ou CNPJ:</label>
+                <input type="text" id="cpfCnpj" placeholder="000.000.000-00 ou 00.000.000/0001-00" maxlength="18" inputmode="numeric" required>
+                <div id="cpfCnpjError" class="error"></div>
+            </div>
+            <div class="form-group">
+                <label for="rg">RG:</label>
+                <input type="text" id="rg" maxlength="13" inputmode="numeric">
+                <div id="rgError" class="error"></div>
+            </div>
+            <div class="form-group">
+                <label for="dataNascimento">Data de Nascimento (DD/MM/AAAA):</label>
+                <input type="text" id="dataNascimento" placeholder="DD/MM/AAAA" required>
+                <div id="dataNascimentoError" class="error"></div>
+            </div>
+            <div class="form-group">
+                <label for="ruaCorrespondencia">Rua (Correspondência):</label>
+                <input type="text" id="ruaCorrespondencia" class="uppercase">
+            </div>
+            <div class="form-group">
+                <label for="numeroCorrespondencia">Número:</label>
+                <input type="text" id="numeroCorrespondencia" class="uppercase">
+            </div>
+            <div class="form-group">
+                <label for="bairroCorrespondencia">Bairro:</label>
+                <input type="text" id="bairroCorrespondencia" class="uppercase">
+            </div>
+            <div class="form-group">
+                <label for="telefone">Telefone:</label>
+                <input type="tel" id="telefone" placeholder="(00) 00000-0000" maxlength="15" required>
+                <div id="telefoneError" class="error"></div>
+            </div>
+            <div class="form-group">
+                <label for="email">E-mail de Contato:</label>
+                <input type="email" id="email" required>
+                <div id="emailError" class="error"></div>
+            </div>
+        </form>
+    </div>
+
+    <div id="cadastroImovel" class="container">
+        <h2>Informações do Imóvel</h2>
+        <form id="cadastroImovelForm">
+            <div class="form-group">
+                <label for="ruaImovel">Rua:</label>
+                <input type="text" id="ruaImovel" class="uppercase" required>
+            </div>
+            <div class="form-group">
+                <label for="numeroImovel">Número:</label>
+                <input type="text" id="numeroImovel" class="uppercase" required>
+            </div>
+            <div class="form-group">
+                <label for="bairroImovel">Bairro:</label>
+                <input type="text" id="bairroImovel" class="uppercase" required>
+            </div>
+            <div class="form-group">
+                <label for="cepImovel">CEP:</label>
+                <input type="text" id="cepImovel" placeholder="00000-000" maxlength="9" required>
+            </div>
+            <div class="form-group">
+                <label for="matriculaImovel">Matrícula do Imóvel:</label>
+                <input type="text" id="matriculaImovel" class="uppercase" required>
+            </div>
+            <div class="form-group">
+                <label for="tipoImovel">Tipo de Imóvel:</label>
+                <select id="tipoImovel" required>
+                    <option value="">Selecione...</option>
+                    <option value="Residencial">Residencial</option>
+                    <option value="Comercial">Comercial</option>
+                    <option value="Terreno">Terreno</option>
+                    <option value="Misto">Misto</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="areaTerrenoCadastro">Área do Terreno (m²):</label>
+                <input type="number" id="areaTerrenoCadastro" step="0.01" inputmode="decimal" required onwheel="return false;" onkeydown="if(event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();">
+            </div>
+            <div class="form-group">
+                <label for="areaConstruidaCadastro">Área Construída (m²):</label>
+                <input type="number" id="areaConstruidaCadastro" step="0.01" inputmode="decimal" required onwheel="return false;" onkeydown="if(event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();">
+            </div>
+            <div class="form-group">
+                <label for="numeroPavimentos">Número de Pavimentos:</label>
+                <input type="number" id="numeroPavimentos" inputmode="numeric" required onwheel="return false;" onkeydown="if(event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();">
+            </div>
+            <div class="form-group">
+                <label for="idadeConstrucao">Idade da Construção (anos):</label>
+                <input type="number" id="idadeConstrucao" inputmode="numeric" required onwheel="return false;" onkeydown="if(event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();">
+            </div>
+            <div class="form-group">
+                <label for="materialConstrucao">Material de Construção:</label>
+                <select id="materialConstrucao" required>
+                    <option value="">Selecione...</option>
+                    <option value="Alvenaria">Alvenaria</option>
+                    <option value="Madeira">Madeira</option>
+                    <option value="Concreto">Concreto</option>
+                    <option value="Outro">Outro</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="condicaoImovel">Condição do Imóvel:</label>
+                <select id="condicaoImovel" required>
+                    <option value="">Selecione...</option>
+                    <option value="Ocupado">Ocupado</option>
+                    <option value="Desocupado">Desocupado</option>
+                    <option value="Em Construção">Em Construção</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="benfeitorias">Benfeitorias:</label>
+                <input type="text" id="benfeitorias" class="uppercase">
+            </div>
+            <div class="form-group">
+                <label for="zoneamento">Zoneamento:</label>
+                <input type="text" id="zoneamento" class="uppercase" required>
+            </div>
+        </form>
+    </div>
+
+    <div id="calculadoraIPTU" class="container">
+        <h2>Cálculo do IPTU</h2>
+        <form id="iptuForm">
+            <div class="form-group">
+                <label for="areaTerreno">Área do Terreno (m²):</label>
+                <input type="number" id="areaTerreno" step="0.01" inputmode="decimal" required onwheel="return false;" onkeydown="if(event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();">
+            </div>
+            <div class="form-group">
+                <label for="valorMqTerreno">Valor m² Terreno (R$):</label>
+                <input type="number" id="valorMqTerreno" step="0.01" inputmode="decimal" required onwheel="return false;" onkeydown="if(event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();">
+            </div>
+            <div class="form-group calculated">
+                <label>Valor do Terreno (VT):</label>
+                <input type="text" id="valorTerreno" readonly>
+            </div>
+            <div class="form-group">
+                <label for="areaConstruida">Área Construída (m²):</label>
+                <input type="number" id="areaConstruida" step="0.01" inputmode="decimal" required onwheel="return false;" onkeydown="if(event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();">
+            </div>
+            <div class="form-group">
+                <label for="valorMqConstrucao">Valor m² Construção (R$):</label>
+                <input type="number" id="valorMqConstrucao" step="0.01" inputmode="decimal" required onwheel="return false;" onkeydown="if(event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();">
+            </div>
+            <div class="form-group">
+                <label for="fatorIdade">Fator Idade:</label>
+                <input type="number" id="fatorIdade" step="0.01" inputmode="decimal" required onwheel="return false;" onkeydown="if(event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();">
+            </div>
+            <div class="form-group">
+                <label for="fatorPadrao">Fator Padrão:</label>
+                <input type="number" id="fatorPadrao" step="0.01" inputmode="decimal" required onwheel="return false;" onkeydown="if(event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();">
+            </div>
+            <div class="form-group calculated">
+                <label>Valor da Construção (VC):</label>
+                <input type="text" id="valorConstrucao" readonly>
+            </div>
+            <div class="form-group calculated">
+                <label>Valor Venal (VV):</label>
+                <input type="text" id="valorVenal" readonly>
+            </div>
+            <div class="form-group">
+                <label for="aliquota">Alíquota (%):</label>
+                <input type="number" id="aliquota" step="0.01" inputmode="decimal" required onwheel="return false;" onkeydown="if(event.key === 'ArrowUp' || event.key === 'ArrowDown') event.preventDefault();">
+            </div>
+            <div class="form-group calculated">
+                <label>IPTU (R$):</label>
+                <input type="text" id="iptu" readonly>
+            </div>
+            <div class="result" id="resultado" style="display: none;">
+                Cálculo realizado com sucesso!
+            </div>
+        </form>
+    </div>
+
+    <footer id="footer">
+        <button type="button" class="btn btn-primary" onclick="nextStep()" id="nextStepBtn">Próxima Etapa</button>
+    </footer>
+
+    <script>
+        // Inicializar Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVW8YN4jRdRv5uYyPxWV_cZ8oS0a2I7hk",
+            authDomain: "iptucareiro.firebaseapp.com",
+            projectId: "iptucareiro",
+            storageBucket: "iptucareiro.firebasestorage.app",
+            messagingSenderId: "247099053843",
+            appId: "1:247099053843:web:08717a5344fe36f00dece6"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'login.html';
+            }
+        });
+
+        function fazerLogoff() {
+            firebase.auth().signOut().then(() => {
+                window.location.href = 'login.html';
+            }).catch((error) => {
+                console.error('Erro ao fazer logoff:', error);
+                alert('Erro ao fazer logoff. Verifique o console para mais detalhes.');
+            });
+        }
+
+        function toggleMenu() {
+            const menuContent = document.getElementById('menuContent');
+            menuContent.classList.toggle('active');
+        }
+
+        document.addEventListener('click', function(event) {
+            const menuContent = document.getElementById('menuContent');
+            const menuBtn = document.querySelector('.menu-btn');
+            if (!menuBtn.contains(event.target) && !menuContent.contains(event.target)) {
+                menuContent.classList.remove('active');
+            }
+        });
+
+        function formatarReais(valor) {
+            return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        document.querySelectorAll('.uppercase').forEach(input => {
+            input.addEventListener('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+        });
+
+        document.querySelectorAll('input, select').forEach((input, index, inputs) => {
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const nextInput = inputs[index + 1];
+                    if (nextInput) {
+                        nextInput.focus();
+                    }
+                }
+            });
+        });
+
+        document.getElementById('dataNascimento').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 8) value = value.slice(0, 8);
+            if (value.length > 4) {
+                value = value.replace(/(\d{2})(\d{2})(\d)/, '$1/$2/$3');
+            } else if (value.length > 2) {
+                value = value.replace(/(\d{2})(\d)/, '$1/$2');
+            }
+            e.target.value = value;
+        });
+
+        document.getElementById('dataNascimento').addEventListener('blur', function() {
+            const errorDiv = document.getElementById('dataNascimentoError');
+            const value = this.value;
+            const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+            if (!value) {
+                errorDiv.textContent = 'Data de nascimento é obrigatória';
+                return;
+            }
+            if (!dateRegex.test(value)) {
+                errorDiv.textContent = 'Formato inválido (use DD/MM/AAAA)';
+                return;
+            }
+            const [_, day, month, year] = value.match(dateRegex);
+            const date = new Date(year, month - 1, day);
+            const today = new Date();
+            if (isNaN(date.getTime()) || date > today || date.getFullYear() < 1900) {
+                errorDiv.textContent = 'Data de nascimento inválida';
+            } else {
+                errorDiv.textContent = '';
+            }
+        });
+
+        document.getElementById('cpfCnpj').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length <= 11) {
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            } else {
+                value = value.replace(/(\d{2})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d)/, '$1/$2');
+                value = value.replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+            }
+            e.target.value = value;
+        });
+
+        function validarCPF(cpf) {
+            cpf = cpf.replace(/\D/g, '');
+            if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+            let soma = 0, resto;
+            for (let i = 1; i <= 9; i++) soma += parseInt(cpf.charAt(i-1)) * (11 - i);
+            resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpf.charAt(9))) return false;
+            soma = 0;
+            for (let i = 1; i <= 10; i++) soma += parseInt(cpf.charAt(i-1)) * (12 - i);
+            resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            return resto === parseInt(cpf.charAt(10));
+        }
+
+        function validarCNPJ(cnpj) {
+            cnpj = cnpj.replace(/\D/g, '');
+            if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
+            let tamanho = cnpj.length - 2;
+            let numeros = cnpj.substring(0, tamanho);
+            let digitos = cnpj.substring(tamanho);
+            let soma = 0;
+            let pos = tamanho - 7;
+            for (let i = tamanho; i >= 1; i--) {
+                soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+                if (pos < 2) pos = 9;
+            }
+            let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+            if (resultado !== parseInt(digitos.charAt(0))) return false;
+            tamanho = tamanho + 1;
+            numeros = cnpj.substring(0, tamanho);
+            soma = 0;
+            pos = tamanho - 7;
+            for (let i = tamanho; i >= 1; i--) {
+                soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+                if (pos < 2) pos = 9;
+            }
+            resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+            return resultado === parseInt(digitos.charAt(1));
+        }
+
+        document.getElementById('cpfCnpj').addEventListener('blur', function() {
+            const errorDiv = document.getElementById('cpfCnpjError');
+            const value = this.value.replace(/\D/g, '');
+            if (value.length === 11) {
+                if (!validarCPF(this.value)) {
+                    errorDiv.textContent = 'CPF inválido';
+                } else {
+                    errorDiv.textContent = '';
+                }
+            } else if (value.length === 14) {
+                if (!validarCNPJ(this.value)) {
+                    errorDiv.textContent = 'CNPJ inválido';
+                } else {
+                    errorDiv.textContent = '';
+                }
+            } else {
+                errorDiv.textContent = 'CPF ou CNPJ inválido';
+            }
+        });
+
+        document.getElementById('rg').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            e.target.value = value.slice(0, 13);
+        });
+
+        document.getElementById('rg').addEventListener('blur', function() {
+            const errorDiv = document.getElementById('rgError');
+            const rg = this.value;
+            if (rg && !/^\d{1,13}$/.test(rg)) {
+                errorDiv.textContent = 'RG inválido (deve conter até 13 dígitos)';
+            } else {
+                errorDiv.textContent = '';
+            }
+        });
+
+        document.getElementById('telefone').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length <= 11) {
+                value = value.replace(/(\d{2})(\d)/, '($1) $2');
+                value = value.replace(/(\d{5})(\d)/, '$1-$2');
+            }
+            e.target.value = value;
+        });
+
+        document.getElementById('telefone').addEventListener('blur', function() {
+            const errorDiv = document.getElementById('telefoneError');
+            const telefone = this.value.replace(/\D/g, '');
+            if (telefone.length < 10 || telefone.length > 11) {
+                errorDiv.textContent = 'Telefone inválido';
+            } else {
+                errorDiv.textContent = '';
+            }
+        });
+
+        document.getElementById('cepImovel').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length <= 8) {
+                value = value.replace(/(\d{5})(\d)/, '$1-$2');
+            }
+            e.target.value = value;
+        });
+
+        document.getElementById('email').addEventListener('blur', function() {
+            const errorDiv = document.getElementById('emailError');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(this.value)) {
+                errorDiv.textContent = 'E-mail inválido';
+            } else {
+                errorDiv.textContent = '';
+            }
+        });
+
+        function calcular() {
+            const areaTerreno = parseFloat(document.getElementById('areaTerreno').value) || 0;
+            const valorMqTerreno = parseFloat(document.getElementById('valorMqTerreno').value) || 0;
+            const areaConstruida = parseFloat(document.getElementById('areaConstruida').value) || 0;
+            const valorMqConstrucao = parseFloat(document.getElementById('valorMqConstrucao').value) || 0;
+            const fatorIdade = parseFloat(document.getElementById('fatorIdade').value) || 1;
+            const fatorPadrao = parseFloat(document.getElementById('fatorPadrao').value) || 1;
+            const aliquota = parseFloat(document.getElementById('aliquota').value) || 0;
+
+            const vt = areaTerreno * valorMqTerreno;
+            document.getElementById('valorTerreno').value = formatarReais(vt);
+
+            const vc = areaConstruida * valorMqConstrucao * fatorIdade * fatorPadrao;
+            document.getElementById('valorConstrucao').value = formatarReais(vc);
+
+            const vv = vt + vc;
+            document.getElementById('valorVenal').value = formatarReais(vv);
+
+            const iptuValor = (vv * aliquota) / 100;
+            document.getElementById('iptu').value = formatarReais(iptuValor);
+
+            if (areaTerreno > 0 && valorMqTerreno > 0 && areaConstruida >= 0 && valorMqConstrucao > 0 && aliquota > 0) {
+                document.getElementById('resultado').style.display = 'block';
+            } else {
+                document.getElementById('resultado').style.display = 'none';
+            }
+        }
+
+        function irParaImovel() {
+            const cadastroPessoalForm = document.getElementById('cadastroPessoalForm');
+            const cpfCnpjError = document.getElementById('cpfCnpjError').textContent;
+            const telefoneError = document.getElementById('telefoneError').textContent;
+            const emailError = document.getElementById('emailError').textContent;
+            const dataNascimentoError = document.getElementById('dataNascimentoError').textContent;
+
+            if (!cadastroPessoalForm.checkValidity() || cpfCnpjError || telefoneError || emailError || dataNascimentoError) {
+                alert('Por favor, preencha todos os campos obrigatórios do cadastro pessoal corretamente antes de prosseguir.');
+                return;
+            }
+
+            document.getElementById('stepContribuinte').classList.remove('active');
+            document.getElementById('stepImovel').classList.add('active');
+            document.getElementById('stepIPTU').classList.remove('active');
+
+            document.getElementById('cadastroPessoal').classList.remove('active');
+            document.getElementById('cadastroImovel').classList.add('active');
+            
+            // Atualizar o rodapé para a segunda etapa
+            const footer = document.getElementById('footer');
+            footer.classList.add('justify-space-between');
+            footer.innerHTML = `
+                <button type="button" class="btn btn-back" onclick="voltarParaPessoal()">Voltar</button>
+                <button type="button" class="btn btn-primary" onclick="irParaCalculadora()" id="nextStepBtn">Próxima Etapa</button>
+            `;
+        }
+
+        function voltarParaPessoal() {
+            document.getElementById('stepContribuinte').classList.add('active');
+            document.getElementById('stepImovel').classList.remove('active');
+            document.getElementById('stepIPTU').classList.remove('active');
+
+            document.getElementById('cadastroPessoal').classList.add('active');
+            document.getElementById('cadastroImovel').classList.remove('active');
+            
+            // Restaurar o rodapé para a primeira etapa
+            const footer = document.getElementById('footer');
+            footer.classList.remove('justify-space-between');
+            footer.innerHTML = `
+                <button type="button" class="btn btn-primary" onclick="nextStep()" id="nextStepBtn">Próxima Etapa</button>
+            `;
+        }
+
+        function irParaCalculadora() {
+            const cadastroImovelForm = document.getElementById('cadastroImovelForm');
+            if (!cadastroImovelForm.checkValidity()) {
+                alert('Por favor, preencha todos os campos obrigatórios do cadastro do imóvel antes de prosseguir.');
+                return;
+            }
+
+            document.getElementById('areaTerreno').value = document.getElementById('areaTerrenoCadastro').value;
+            document.getElementById('areaConstruida').value = document.getElementById('areaConstruidaCadastro').value;
+
+            document.getElementById('stepContribuinte').classList.remove('active');
+            document.getElementById('stepImovel').classList.remove('active');
+            document.getElementById('stepIPTU').classList.add('active');
+
+            document.getElementById('cadastroImovel').classList.remove('active');
+            document.getElementById('calculadoraIPTU').classList.add('active');
+            
+            // Atualizar o rodapé para a terceira etapa
+            const footer = document.getElementById('footer');
+            footer.classList.add('justify-space-between');
+            footer.innerHTML = `
+                <button type="button" class="btn btn-back" onclick="voltarParaImovel()">Voltar</button>
+                <button type="button" class="btn btn-save" onclick="salvarFicha()" id="btnSalvar">Salvar Cadastro</button>
+            `;
+            
+            calcular();
+        }
+
+        function voltarParaImovel() {
+            document.getElementById('stepContribuinte').classList.remove('active');
+            document.getElementById('stepImovel').classList.add('active');
+            document.getElementById('stepIPTU').classList.remove('active');
+
+            document.getElementById('cadastroImovel').classList.add('active');
+            document.getElementById('calculadoraIPTU').classList.remove('active');
+            
+            // Atualizar o rodapé para a segunda etapa
+            const footer = document.getElementById('footer');
+            footer.classList.add('justify-space-between');
+            footer.innerHTML = `
+                <button type="button" class="btn btn-back" onclick="voltarParaPessoal()">Voltar</button>
+                <button type="button" class="btn btn-primary" onclick="irParaCalculadora()" id="nextStepBtn">Próxima Etapa</button>
+            `;
+        }
+
+        function nextStep() {
+            if (document.getElementById('cadastroPessoal').classList.contains('active')) {
+                irParaImovel();
+            } else if (document.getElementById('cadastroImovel').classList.contains('active')) {
+                irParaCalculadora();
+            }
+        }
+
+        async function salvarFicha() {
+            const requiredFields = ['areaTerreno', 'valorMqTerreno', 'areaConstruida', 'valorMqConstrucao', 'fatorIdade', 'fatorPadrao', 'aliquota'];
+            const allFilled = requiredFields.every(field => document.getElementById(field).value.trim() !== '');
+            if (!allFilled || document.getElementById('resultado').style.display === 'none') {
+                alert('Por favor, preencha todos os campos da calculadora e realize o cálculo antes de salvar.');
+                return;
+            }
+
+            const btnSalvar = document.getElementById('btnSalvar');
+            btnSalvar.classList.add('loading');
+
+            const contribuinte = {
+                nomeCompleto: document.getElementById('nomeCompleto').value,
+                cpfCnpj: document.getElementById('cpfCnpj').value,
+                rg: document.getElementById('rg').value,
+                dataNascimento: document.getElementById('dataNascimento').value,
+                ruaCorrespondencia: document.getElementById('ruaCorrespondencia').value,
+                numeroCorrespondencia: document.getElementById('numeroCorrespondencia').value,
+                bairroCorrespondencia: document.getElementById('bairroCorrespondencia').value,
+                telefone: document.getElementById('telefone').value,
+                email: document.getElementById('email').value
+            };
+
+            const imovel = {
+                ruaImovel: document.getElementById('ruaImovel').value,
+                numeroImovel: document.getElementById('numeroImovel').value,
+                bairroImovel: document.getElementById('bairroImovel').value,
+                cepImovel: document.getElementById('cepImovel').value,
+                matriculaImovel: document.getElementById('matriculaImovel').value,
+                tipoImovel: document.getElementById('tipoImovel').value,
+                areaTerrenoCadastro: document.getElementById('areaTerrenoCadastro').value,
+                areaConstruidaCadastro: document.getElementById('areaConstruidaCadastro').value,
+                numeroPavimentos: document.getElementById('numeroPavimentos').value,
+                idadeConstrucao: document.getElementById('idadeConstrucao').value,
+                materialConstrucao: document.getElementById('materialConstrucao').value,
+                condicaoImovel: document.getElementById('condicaoImovel').value,
+                benfeitorias: document.getElementById('benfeitorias').value,
+                zoneamento: document.getElementById('zoneamento').value
+            };
+
+            const fichaIPTU = {
+                areaTerreno: document.getElementById('areaTerreno').value,
+                valorMqTerreno: document.getElementById('valorMqTerreno').value,
+                valorTerreno: document.getElementById('valorTerreno').value,
+                areaConstruida: document.getElementById('areaConstruida').value,
+                valorMqConstrucao: document.getElementById('valorMqConstrucao').value,
+                fatorIdade: document.getElementById('fatorIdade').value,
+                fatorPadrao: document.getElementById('fatorPadrao').value,
+                valorConstrucao: document.getElementById('valorConstrucao').value,
+                valorVenal: document.getElementById('valorVenal').value,
+                aliquota: document.getElementById('aliquota').value,
+                iptu: document.getElementById('iptu').value
+            };
+
+            const ficha = {
+                id: Date.now(),
+                dataCadastro: new Date().toLocaleString('pt-BR'),
+                ...contribuinte,
+                ...imovel,
+                ...fichaIPTU
+            };
+
+            try {
+                await db.collection('IPTU').doc(ficha.id.toString()).set(ficha);
+                document.getElementById('successMessage').classList.add('show');
+                setTimeout(() => {
+                    document.getElementById('cadastroPessoalForm').reset();
+                    document.getElementById('cadastroImovelForm').reset();
+                    document.getElementById('iptuForm').reset();
+                    document.getElementById('resultado').style.display = 'none';
+                    document.getElementById('successMessage').classList.remove('show');
+
+                    document.getElementById('stepContribuinte').classList.add('active');
+                    document.getElementById('stepImovel').classList.remove('active');
+                    document.getElementById('stepIPTU').classList.remove('active');
+
+                    document.getElementById('cadastroPessoal').classList.add('active');
+                    document.getElementById('cadastroImovel').classList.remove('active');
+                    document.getElementById('calculadoraIPTU').classList.remove('active');
+                    
+                    // Restaurar o rodapé para a primeira etapa
+                    const footer = document.getElementById('footer');
+                    footer.classList.remove('justify-space-between');
+                    footer.innerHTML = `
+                        <button type="button" class="btn btn-primary" onclick="nextStep()" id="nextStepBtn">Próxima Etapa</button>
+                    `;
+                    
+                    btnSalvar.classList.remove('loading');
+                }, 2000);
+            } catch (error) {
+                console.error('Erro ao salvar no Firebase:', error);
+                alert('Erro ao salvar o cadastro no Firebase. Verifique o console para mais detalhes.');
+                btnSalvar.classList.remove('loading');
+            }
+        }
+
+        document.querySelectorAll('#iptuForm input:not([readonly])').forEach(input => {
+            input.addEventListener('input', calcular);
+        });
+
+        calcular();
+
+        // Inicializar o botão "Próxima Etapa" com a função correta
+        document.getElementById('nextStepBtn').onclick = irParaImovel;
+    </script>
+</body>
+</html>
